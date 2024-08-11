@@ -6,16 +6,107 @@ const themeIcon = document.getElementById("theme-icon");
 const res = document.getElementById("result");
 const toast = document.getElementById("toast");
 
-function calculate(value) {
-  const calculatedValue = eval(value || null);
-  if (isNaN(calculatedValue)) {
-    res.value = "Can't divide 0 with 0";
-    setTimeout(() => {
-      res.value = "";
-    }, 1300);
-  } else {
-    res.value = calculatedValue;
+function calculate(expression) {
+  let tokens = expression.split("");
+
+  // create a stack to hold numbers
+  let values = [];
+
+  // create a stack to hold operators
+  let ops = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    // check if our current token is a whitespace (skip)
+    if (tokens[i] == " ") {
+      continue;
+    }
+
+    // current token is a number,
+    // push it to stack for numbers
+    if (tokens[i] >= "0" && tokens[i] <= "9") {
+      let sbuf = "";
+
+      // check for multi-digit number
+      while (i < tokens.length && tokens[i] >= "0" && tokens[i] <= "9") {
+        sbuf = sbuf + tokens[i++];
+      }
+      values.push(parseInt(sbuf, 10));
+      // decrement index to account for offset
+      i--;
+    }
+
+    // current token is an opening brace
+    else if (tokens[i] == "(") {
+      ops.push(tokens[i]);
+    }
+
+    // if token is a closing brace (evaluate entire parentheses)
+    else if (tokens[i] == ")") {
+      while (ops[ops.length - 1] != "(") {
+        values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+      }
+      ops.pop();
+    }
+
+    // current token is an operator
+    else if (
+      tokens[i] == "+" ||
+      tokens[i] == "-" ||
+      tokens[i] == "*" ||
+      tokens[i] == "/" ||
+      tokens[i] == "^"
+    ) {
+      // use hasPrecedence helper function to determine precedence of multiple operators
+      while (ops.length > 0 && hasPrecedence(tokens[i], ops[ops.length - 1])) {
+        values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+      }
+      // push current token to operator stack
+      ops.push(tokens[i]);
+    }
   }
+
+  // entire expression has been parsed, add remaining values
+  while (ops.length > 0) {
+    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+  }
+
+  // top of our values stack has the final value
+  res.value = values.pop();
+}
+
+// Determines if operator 2 has higher precedence than operator 1.
+function hasPrecedence(op1, op2) {
+  if (op2 == "(" || op2 == ")") {
+    return false;
+  }
+  if (op1 == "^") {
+    return false;
+  }
+  if ((op1 == "*" || op1 == "/") && (op2 == "+" || op2 == "-")) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+// This method applies the operators and returns the evaluation
+function applyOp(op, b, a) {
+  switch (op) {
+    case "+":
+      return a + b;
+    case "-":
+      return a - b;
+    case "*":
+      return a * b;
+    case "^":
+      return a ** b;
+    case "/":
+      if (b == 0) {
+        document.write("Cannot divide by zero");
+      }
+      return parseInt(a / b, 10);
+  }
+  return 0;
 }
 
 // Swaps the stylesheet to achieve dark mode.
@@ -106,3 +197,4 @@ function keyboardInputHandler(e) {
     res.value = resultInput.substring(0, res.value.length - 1);
   }
 }
+
